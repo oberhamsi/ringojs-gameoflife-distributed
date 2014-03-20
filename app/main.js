@@ -154,7 +154,7 @@ function optionsError(msg) {
     print ('')
     print(parser.help());
     print ('');
-    print (' Server only: --width, --clientwidth');
+    print (' Server only: --size, --clientsize');
     print (' Client only: --speed, --pattern')
     print ('')
     print('Example invocations:');
