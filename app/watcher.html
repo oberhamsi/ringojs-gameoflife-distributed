@@ -1,0 +1,80 @@
+<html>
+    <head>
+        <title>Game of Life </title>
+    </head>
+    <style>
+    canvas {
+        box-shadow: 0 0 2em #aaa;
+        margin: 2em;
+    }
+
+    </style>
+
+    <script>
+
+    window.onload = function () {
+        var boardSizePerClient = null;
+        var boardSize = null;
+
+        var status = document.getElementById('status');
+        function debug(msg) {
+            status.innerHTML = msg;
+        }
+
+        var websocketURL = "ws://" + window.location.host + window.location.pathname + "gofsocket";
+        debug('Connecting to server ' + websocketURL);
+        var ws = new WebSocket(websocketURL);
+        ws.onopen = function() {
+            ws.send('status');
+        };
+
+        // i'm sorry for all the <canvas> nonsense
+        // but i also tried with <table> and <td> and just
+        // setting the backgroundcolor.. it was 4x slower via DOM.
+        var bigBoardContext = null;
+        var clientBoardContext = null;
+        var CELLSIZE = 8;
+        ws.onmessage = function(e) {
+            var msg = JSON.parse(e.data);
+            if (msg.boardSize) {
+                boardSizePerClient = msg.boardSizePerClient;
+                boardSize = msg.boardSize;
+
+                var bigBoard = document.getElementById('board');
+                bigBoard.width = boardSize * CELLSIZE;
+                bigBoard.height = boardSize * CELLSIZE;
+                bigBoardContext = bigBoard.getContext('2d');
+                var clientBoard = document.createElement('canvas');
+                clientBoard.width = boardSizePerClient * CELLSIZE;
+                clientBoard.height = boardSizePerClient * CELLSIZE;
+                clientBoardContext = clientBoard.getContext('2d');
+                // need canvas ref to blit onto big board
+                clientBoardContext.canvas = clientBoard;
+                debug('Board created')
+                ws.send('watch');
+            } else if (msg.board) {
+                var step = msg.step;
+                var offset = msg.offset;
+                var board = msg.board;
+                var state = msg.state;
+                for (var i = 0; i < boardSizePerClient; i++) {
+                    for (var j = 0; j < boardSizePerClient; j++) {
+                        var state = board[i][j];
+                        var hue = step * 20 % 256;
+                        var lum = state ? 25 : 95;
+                        clientBoardContext.fillStyle = 'hsl(' + hue + ', 100%, ' + lum + '%)';
+                        clientBoardContext.fillRect(i * CELLSIZE, j * CELLSIZE, CELLSIZE, CELLSIZE);
+                    }
+                }
+                bigBoardContext.drawImage(clientBoardContext.canvas, offset[0] * CELLSIZE, offset[1] * CELLSIZE);
+            }
+        };
+    };
+
+    </script>
+
+    <body>
+        <canvas id="board"></canvas>
+        <pre id="status"></pre>
+    </body>
+</html>
